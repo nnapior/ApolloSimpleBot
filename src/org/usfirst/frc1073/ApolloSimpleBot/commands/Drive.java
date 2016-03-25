@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import org.usfirst.frc1073.ApolloSimpleBot.Robot;
+import org.usfirst.frc1073.ApolloSimpleBot.subsystems.DriveTrain.profiles;
 
 /**
  *
@@ -84,7 +85,8 @@ public class Drive extends Command {
     	SmartDashboard.putNumber("left", left);
     	SmartDashboard.putNumber("right", right);
     	
-    	Robot.driveTrain.moveBasic(left, right);
+    	if(Robot.driveTrain.getCurrentProfile() == profiles.BASIC) Robot.driveTrain.moveBasic(left, right);
+    	else Robot.driveTrain.movePIDSpeed(left, right);
     }
 
     // Make this return true when this Command no longer needs to run execute()

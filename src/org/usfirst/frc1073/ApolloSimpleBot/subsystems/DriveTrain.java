@@ -13,11 +13,8 @@ package org.usfirst.frc1073.ApolloSimpleBot.subsystems;
 
 import org.usfirst.frc1073.ApolloSimpleBot.RobotMap;
 import org.usfirst.frc1073.ApolloSimpleBot.commands.*;
-
-import com.ni.vision.NIVision.CalibrationThumbnailType;
-
 import edu.wpi.first.wpilibj.CANTalon;
-
+import edu.wpi.first.wpilibj.CANTalon.FeedbackDevice;
 import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -45,14 +42,36 @@ public class DriveTrain extends Subsystem {
     boolean invertLeftEncoder = false;
     boolean invertRightEncoder = false;
     
+    public enum profiles {
+    	SPEED,
+    	POSITIONAL,
+    	BASIC
+    }
+    
+    private profiles current;
+    private static final double MOTOR_RPM = 2150;
+    
     public DriveTrain() {
+    	
+    	current = profiles.BASIC;
+    	
     	setupMotors();
     	setupEncoders();
     	setupPID();
     }
     
     private void setupPID() {
+    	leftMotor2.setFeedbackDevice(FeedbackDevice.QuadEncoder);
+    	rightMotor1.setFeedbackDevice(FeedbackDevice.QuadEncoder);
     	
+    	leftMotor2.configNominalOutputVoltage(+0f, -0f);
+    	rightMotor1.configNominalOutputVoltage(+0f, -0f);
+    	
+    	leftMotor2.configPeakOutputVoltage(+12.0f, -12.0f);
+    	rightMotor1.configPeakOutputVoltage(+12.0f, -12.0f);
+    	
+    	leftMotor2.setAllowableClosedLoopErr(0);
+    	rightMotor1.setAllowableClosedLoopErr(0);
     }
     
     private void setupMotors() {
@@ -76,11 +95,11 @@ public class DriveTrain extends Subsystem {
     	rightMotor1.configEncoderCodesPerRev(360);
     }
     
-    public void manualSetProfile(int id) {
-    	if(id != 0 || id != 1) return;
+    public void manualSetProfile(profiles profile) {
+    	if(profile.ordinal() != 0 || profile.ordinal() != 1) return;
     	else {
-    		leftMotor2.setProfile(id);
-    		rightMotor1.setProfile(id);
+    		leftMotor2.setProfile(profile.ordinal());
+    		rightMotor1.setProfile(profile.ordinal());
     	}
     }
     
@@ -100,21 +119,27 @@ public class DriveTrain extends Subsystem {
 		rightMotor1.setPID(p, i, d);
     }
     
+    public void setPID(double p, double i, double d, double f) {
+    	leftMotor2.setPID(p, i, d);
+    	leftMotor2.setF(f);
+		rightMotor1.setPID(p, i, d);
+		rightMotor1.setF(f);
+    }
+    
     public void moveBasic(double left, double right) {
     	
     	if(getState() != CANTalon.TalonControlMode.PercentVbus) setBasic();
     	
     	leftMotor2.set(left);
     	rightMotor1.set(right);
-    	
-    	SmartDashboard.putNumber("left reading", leftMotor2.getEncVelocity());
-    	SmartDashboard.putNumber("right reading", rightMotor1.getEncVelocity());
-    	
     }
     
     public void movePIDSpeed(double leftSpeed, double rightSpeed) {
     	
     	if(getState() != CANTalon.TalonControlMode.Speed) setSpeedMode();
+    	
+    	leftMotor2.set(leftSpeed * MOTOR_RPM);
+    	rightMotor1.set(rightSpeed * MOTOR_RPM);
     	
     }
     
@@ -129,24 +154,57 @@ public class DriveTrain extends Subsystem {
     }
     
     public void setBasic() {
+    	
+    	current = profiles.BASIC;
+    	
     	leftMotor2.changeControlMode(CANTalon.TalonControlMode.PercentVbus);
     	rightMotor1.changeControlMode(CANTalon.TalonControlMode.PercentVbus);
     }
     
     public void setSpeedMode() {
-    	leftMotor2.setProfile(0);
-    	rightMotor1.setProfile(0);
+    	
+    	current = profiles.SPEED;
+    	
+    	leftMotor2.setProfile(profiles.SPEED.ordinal());
+    	rightMotor1.setProfile(profiles.SPEED.ordinal());
     	
     	leftMotor2.changeControlMode(CANTalon.TalonControlMode.Speed);
     	rightMotor1.changeControlMode(CANTalon.TalonControlMode.Speed);
     }
     
     public void setPositional() {
-    	leftMotor2.setProfile(1);
-    	rightMotor1.setProfile(1);
+    	
+    	current = profiles.POSITIONAL;
+    	
+    	leftMotor2.setProfile(profiles.POSITIONAL.ordinal());
+    	rightMotor1.setProfile(profiles.POSITIONAL.ordinal());
     	
     	leftMotor2.changeControlMode(CANTalon.TalonControlMode.Position);
     	rightMotor1.changeControlMode(CANTalon.TalonControlMode.Position);
+    }
+    
+    public double getLeftRawSpeed() {
+    	return leftMotor2.getEncVelocity();
+    }
+    
+    public double getRightRawSpeed() {
+    	return rightMotor1.getEncVelocity();
+    }
+
+    public double getLeftRawDistance() {
+    	return leftMotor2.getEncPosition();
+    }
+    
+    public double getRightRawDistance() {
+    	return rightMotor1.getEncPosition();
+    }
+    
+    public profiles getCurrentProfile() {
+    	return current;
+    }
+    
+    public void setProfile(profiles newProfile) {
+    	current = newProfile;
     }
     
     // Put methods for controlling this subsystem
