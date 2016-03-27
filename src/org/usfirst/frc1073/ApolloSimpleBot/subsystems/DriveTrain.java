@@ -49,11 +49,18 @@ public class DriveTrain extends Subsystem {
     }
     
     private profiles current;
-    private static final double MOTOR_RPM = 2150;
+    
+    private static final double MOTOR_TOP_RPM = 1169; // This is the top speed of the robot in RPM
+    
+    private static final double RAMP_RATE = 0.0005; // in Volts/Second. This means if it is 12V/1sec it will reach full speed in 1 second
+    
+    private static final double GEAR_RATIO = 11.0 / 8.0;
+    private static final double WHEELE_RADIUS = 8.0; // in inches
+    private static final double FINAL_RADIUS = WHEELE_RADIUS / GEAR_RATIO; // radius after gear ratio (in inches)
     
     public DriveTrain() {
     	
-    	current = profiles.BASIC;
+    	current = profiles.SPEED;
     	
     	setupMotors();
     	setupEncoders();
@@ -70,8 +77,7 @@ public class DriveTrain extends Subsystem {
     	leftMotor2.configPeakOutputVoltage(+12.0f, -12.0f);
     	rightMotor1.configPeakOutputVoltage(+12.0f, -12.0f);
     	
-    	leftMotor2.setAllowableClosedLoopErr(0);
-    	rightMotor1.setAllowableClosedLoopErr(0);
+    	setPID(0.69, 0.009, 6.9, 0.36341);
     }
     
     private void setupMotors() {
@@ -84,6 +90,9 @@ public class DriveTrain extends Subsystem {
     	leftMotor1.set(leftMotor2.getDeviceID());
     	rightMotor2.changeControlMode(CANTalon.TalonControlMode.Follower);
     	rightMotor2.set(rightMotor1.getDeviceID());
+    	
+    	leftMotor2.setVoltageRampRate(RAMP_RATE);
+    	rightMotor1.setVoltageRampRate(RAMP_RATE);
     }
     
     private void setupEncoders() {
@@ -95,58 +104,9 @@ public class DriveTrain extends Subsystem {
     	rightMotor1.configEncoderCodesPerRev(360);
     }
     
-    public void manualSetProfile(profiles profile) {
-    	if(profile.ordinal() != 0 || profile.ordinal() != 1) return;
-    	else {
-    		leftMotor2.setProfile(profile.ordinal());
-    		rightMotor1.setProfile(profile.ordinal());
-    	}
-    }
-    
-    public void manualSetProfile(int id, double p, double i, double d) {
-    	if(id != 0 || id != 1) return;
-    	else {
-    		leftMotor2.setProfile(id);
-    		rightMotor1.setProfile(id);
-    		
-    		leftMotor2.setPID(p, i, d);
-    		rightMotor1.setPID(p, i, d);
-    	}
-    }
-    
-    public void setPID(double p, double i, double d) {
-    	leftMotor2.setPID(p, i, d);
-		rightMotor1.setPID(p, i, d);
-    }
-    
     public void setPID(double p, double i, double d, double f) {
-    	leftMotor2.setPID(p, i, d);
-    	leftMotor2.setF(f);
-		rightMotor1.setPID(p, i, d);
-		rightMotor1.setF(f);
-    }
-    
-    public void moveBasic(double left, double right) {
-    	
-    	if(getState() != CANTalon.TalonControlMode.PercentVbus) setBasic();
-    	
-    	leftMotor2.set(left);
-    	rightMotor1.set(right);
-    }
-    
-    public void movePIDSpeed(double leftSpeed, double rightSpeed) {
-    	
-    	if(getState() != CANTalon.TalonControlMode.Speed) setSpeedMode();
-    	
-    	leftMotor2.set(leftSpeed * MOTOR_RPM);
-    	rightMotor1.set(rightSpeed * MOTOR_RPM);
-    	
-    }
-    
-    public void movePIDPositional(double leftDistance, double rightDistance) {
-    	
-    	if(getState() != CANTalon.TalonControlMode.Position) setPositional();
-    	
+    	leftMotor2.setPID(p, i, d, f, 0, RAMP_RATE, 0);
+    	rightMotor1.setPID(p, i, d, f, 0, RAMP_RATE, 0);
     }
     
     public CANTalon.TalonControlMode getState() {
@@ -184,19 +144,35 @@ public class DriveTrain extends Subsystem {
     }
     
     public double getLeftRawSpeed() {
-    	return leftMotor2.getEncVelocity();
+    	return leftMotor2.getSpeed();
+    }
+    
+    public double getLeftSpeedFps() {
+    	return getLeftRawSpeed() * ((FINAL_RADIUS * 2 * Math.PI) / 720.0);
+    }
+    
+    public double getLeftRawDistance() {
+    	return leftMotor2.getPosition();
+    }
+    
+    public double getLeftDistanceInches() {
+    	return getLeftRawDistance() * (FINAL_RADIUS * 2 * Math.PI);
     }
     
     public double getRightRawSpeed() {
-    	return rightMotor1.getEncVelocity();
+    	return rightMotor1.getSpeed();
     }
-
-    public double getLeftRawDistance() {
-    	return leftMotor2.getEncPosition();
+    
+    public double getRightSpeedFps() {
+    	return getRightRawSpeed() * ((FINAL_RADIUS * 2 * Math.PI) / 720.0);
     }
     
     public double getRightRawDistance() {
-    	return rightMotor1.getEncPosition();
+    	return rightMotor1.getPosition();
+    }
+    
+    public double getRightDistanceInches() {
+    	return getRightRawDistance() * (FINAL_RADIUS * 2 * Math.PI);
     }
     
     public profiles getCurrentProfile() {
@@ -205,6 +181,37 @@ public class DriveTrain extends Subsystem {
     
     public void setProfile(profiles newProfile) {
     	current = newProfile;
+    }
+    
+    public void moveBasic(double left, double right) {
+    	
+    	if(getState() != CANTalon.TalonControlMode.PercentVbus) setBasic();
+    	
+    	leftMotor2.set(left);
+    	rightMotor1.set(right);
+    }
+    
+    public void movePIDSpeed(double leftSpeed, double rightSpeed) {
+    	
+    	if(getState() != CANTalon.TalonControlMode.Speed) setSpeedMode();
+    	
+    	leftMotor2.set(leftSpeed * (MOTOR_TOP_RPM));
+    	rightMotor1.set(rightSpeed * MOTOR_TOP_RPM);
+    	
+    }
+    
+    public void movePIDPositional(double leftDistanceInches, double rightDistanceInches) {
+    	
+    	if(getState() != CANTalon.TalonControlMode.Position) setPositional();
+    	
+    	leftDistanceInches /= (FINAL_RADIUS * 2 * Math.PI);
+    	rightDistanceInches /= (FINAL_RADIUS * 2 * Math.PI);
+    	
+    	double travelDistanceLeft = getLeftDistanceInches() + leftDistanceInches;
+    	double travelDistanceRight = getRightDistanceInches() + rightDistanceInches;
+    	
+    	leftMotor2.set(travelDistanceLeft);
+    	rightMotor1.set(travelDistanceRight);
     }
     
     // Put methods for controlling this subsystem

@@ -15,6 +15,8 @@ import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import org.usfirst.frc1073.ApolloSimpleBot.commands.*;
 import org.usfirst.frc1073.ApolloSimpleBot.subsystems.*;
 
@@ -95,6 +97,10 @@ public class Robot extends IterativeRobot {
      */
     public void teleopPeriodic() {
         Scheduler.getInstance().run();
+        
+        SmartDashboard.putNumber("left enc", driveTrain.getLeftRawSpeed());
+        SmartDashboard.putNumber("right enc", driveTrain.getRightRawSpeed());
+        
     }
 
     /**
