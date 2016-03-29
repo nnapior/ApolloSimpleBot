@@ -77,7 +77,7 @@ public class DriveTrain extends Subsystem {
     	leftMotor2.configPeakOutputVoltage(+12.0f, -12.0f);
     	rightMotor1.configPeakOutputVoltage(+12.0f, -12.0f);
     	
-    	setPID(0.69, 0.009, 6.9, 0.36341);
+    	setPID(0.69, 0.0, 0.0, 0.36341);
     }
     
     private void setupMotors() {
